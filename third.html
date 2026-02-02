@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 Station Dashboard</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background:#f4f6f8; color: #333; }
+    h2 { text-align:center; color: #2c3e50; }
+    .card {
+      border: 1px solid #ddd;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      background: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    #readings { font-size: 1.1rem; line-height: 1.6; color: #2980b9; }
+    .btn-back {
+        padding: 10px 20px;
+        background: #95a5a6;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        display: inline-block;
+        margin-bottom: 20px;
+    }
+    canvas { max-height: 250px; }
+  </style>
+</head>
+
+<body>
+
+<a href="second.html" class="btn-back">⬅ Back</a>
+<h2>ESP32 Weather & Water Dashboard</h2>
+
+<div class="card">
+  <h3>Live Status</h3>
+  <div id="readings">Connecting to Firebase...</div>
+</div>
+
+
+<div class="card">
+  <h3>Water Quality (pH & TDS)</h3>
+  <canvas id="phChart"></canvas>
+</div>
+
+<script>
+/* ===================== FIREBASE CONFIGURATION ===================== */
+const firebaseConfig = {
+    databaseURL: "https://esp32-dht22-1dcca-default-rtdb.firebaseio.com/"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+/* ===================== DATA STORAGE ===================== */
+let phData   = { labels: [], ph: [], tds: [] };
+
+/* ===================== INITIALIZE CHARTS ===================== */
+const commonOptions = { 
+    responsive: true, 
+    maintainAspectRatio: false,
+    animation: false, 
+    scales: { x: { display: true, title: { display: true, text: 'Time' } } } 
+};
+
+
+const phChart = new Chart(document.getElementById('phChart'), {
+    type: 'line',
+    data: { 
+        labels: phData.labels, 
+        datasets: [
+            { label: 'pH', data: phData.ph, borderColor: '#2ecc71', tension: 0.3 },
+            { label: 'TDS (ppm)', data: phData.tds, borderColor: '#f1c40f', tension: 0.3 }
+        ] 
+    },
+    options: commonOptions
+});
+
+/* ===================== LIVE DATA FETCH FROM FIREBASE ===================== */
+// This listens to your "esp32" node in the database
+db.ref("esp32").on("value", (snapshot) => {
+    const data = snapshot.val();
+    if (!data) return;
+
+    const ts = new Date().toLocaleTimeString();
+    
+    // Update Numeric Text
+    document.getElementById('readings').innerHTML = `
+        <strong>Last Sync:</strong> ${ts}<br>
+        🌡️ <strong>Temp:</strong> ${data.temp ?? '--'}°C | 
+        💧 <strong>Humidity:</strong> ${data.hum ?? '--'}% <br>
+        🧪 <strong>pH:</strong> ${data.pH ?? 'No Sensor'} | 
+        🌊 <strong>TDS:</strong> ${data.tds ?? 'No Sensor'} ppm
+    `;
+
+
+    // Update pH/TDS Chart (If values exist)
+    if (data.pH || data.tds) {
+        phData.labels.push(ts);
+        phData.ph.push(data.pH || 0);
+        phData.tds.push(data.tds || 0);
+        if (phData.labels.length > 20) { phData.labels.shift(); phData.ph.shift(); phData.tds.shift(); }
+        phChart.update();
+    }
+});
+</script>
+
+<div class="card">
+  <h3>City-wise Water Quality</h3>
+  <table style="width:100%; font-size:14px; border-collapse:collapse; text-align:center;">
+    <tr>
+      <th style="border:1px solid #ccc; padding:6px;">Water Quality</th>
+      <th style="border:1px solid #ccc; padding:6px;">Mumbai</th>
+      <th style="border:1px solid #ccc; padding:6px;">Delhi</th>
+      <th style="border:1px solid #ccc; padding:6px;">Pune</th>
+      <th style="border:1px solid #ccc; padding:6px;">Bengaluru</th>
+    </tr>
+    <tr>
+      <td style="border:1px solid #ccc; padding:6px;">pH</td>
+      <td>--</td>
+      <td>--</td>
+      <td>--</td>
+      <td>--</td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #ccc; padding:6px;">TDS (ppm)</td>
+      <td>--</td>
+      <td>--</td>
+      <td>--</td>
+      <td>--</td>
+    </tr>
+  </table>
+</div>
+
+</body>
+</html>

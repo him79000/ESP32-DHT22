@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Environment Monitoring</title>
+
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+
+            /* 🔥 Background Image */
+            background: url("https://images.unsplash.com/photo-1472214103451-9374bd1c798e?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0") no-repeat center center;
+            background-size: cover;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            position: relative;
+        }
+
+        /* 🔢 Sensor Data Box */
+        .sensor-box {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.65);
+            color: white;
+            padding: 18px 25px;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            box-shadow: 0 0 15px black;
+            text-align: left;
+        }
+
+        /* Button styling */
+        .btn {
+            padding: 12px 25px;
+            background: silver;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+        }
+
+        .btn:hover {
+            background: #f1f1f1;
+        }
+
+        /* ✨ Typewriter Effect */
+        .typewriter {
+            font-weight: bold;
+            color:white;
+            font-size: 2rem;
+            text-shadow: 2px 2px 10px black;
+            white-space: nowrap;
+            overflow: hidden;
+            border-right: 3px solid white;
+            animation: cursorBlink 0.7s infinite;
+        }
+
+        @keyframes cursorBlink {
+            0% { border-color: transparent; }
+            50% { border-color: white; }
+            100% { border-color: transparent; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 🔢 LIVE SENSOR DATA -->
+    <div class="sensor-box">
+        🌡 Temperature: <span id="temp">--</span> °C <br><br>
+        💧 Humidity: <span id="hum">--</span> %
+    </div>
+
+    <!-- ✨ Typewriter Text -->
+    <div class="message">
+        <span id="typeText" class="typewriter"></span>
+    </div>
+
+    <!-- ➡️ Button -->
+    <button class="btn" onclick="location.href='second.html'">Go to Second Page</button>
+
+    <!-- ✍️ Typewriter Script -->
+    <script>
+        const text = "Welcome to\nEnvironment Monitoring using AI";
+        let index = 0;
+
+        function typeWriter() {
+            document.getElementById("typeText").innerHTML = text.substring(0, index)
+                .replace(/\n/g, "<br>");
+            index++;
+
+            if (index <= text.length) {
+                setTimeout(typeWriter, 100);
+            } else {
+                setTimeout(() => {
+                    index = 0;
+                    document.getElementById("typeText").innerHTML = "";
+                    typeWriter();
+                }, 1500);
+            }
+        }
+        typeWriter();
+    </script>
+
+    <!-- 🌐 FETCH DATA FROM ESP32 BACKEND -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<script>
+    // 1. Your Firebase Configuration
+    const firebaseConfig = {
+        databaseURL: "https://esp32-dht22-1dcca-default-rtdb.firebaseio.com/"
+    };
+
+    // 2. Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 3. Listen for Live Data
+    // We point to "esp32/temp" and "esp32/hum" just like in your Arduino code
+    db.ref("esp32/temp").on("value", (snapshot) => {
+        const tempValue = snapshot.val();
+        document.getElementById("temp").innerText = tempValue ? tempValue.toFixed(1) : "--";
+    });
+
+    db.ref("esp32/hum").on("value", (snapshot) => {
+        const humValue = snapshot.val();
+        document.getElementById("hum").innerText = humValue ? humValue.toFixed(1) : "--";
+    });
+</script>
+
+
+</div>
+
+
+    <button class="btn" onclick="location.href='second.html'">Go to Second Page</button>
+</body>
+</html>
