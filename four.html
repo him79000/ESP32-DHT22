@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 Air Quality Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<style>
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin:20px; background:#f4f6f8; color:#333; }
+h2 { text-align:center; color:#2c3e50; }
+.card {
+  border:1px solid #ddd;
+  padding:20px;
+  border-radius:12px;
+  margin-bottom:20px;
+  background:white;
+  box-shadow:0 4px 12px rgba(0,0,0,0.08);
+}
+#readings { font-size:1.1rem; line-height:1.6; color:#2c3e50; }
+.btn-back {
+  padding:10px 20px;
+  background:#95a5a6;
+  color:white;
+  text-decoration:none;
+  border-radius:5px;
+  display:inline-block;
+  margin-bottom:20px;
+}
+canvas { max-height:260px; }
+</style>
+</head>
+
+<body>
+
+<a href="third.html" class="btn-back">⬅ Back</a>
+<h2>Air Quality Monitoring Dashboard</h2>
+
+<div class="card">
+<h3>Live Air Status</h3>
+<div id="readings">Connecting to Firebase...</div>
+</div>
+
+<div class="card">
+<h3>Air Quality Trends</h3>
+<canvas id="airChart"></canvas>
+</div>
+
+<script>
+/* ================= FIREBASE CONFIG ================= */
+const firebaseConfig = {
+  databaseURL: "https://esp32-dht22-1dcca-default-rtdb.firebaseio.com/"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+/* ================= DATA STORAGE ================= */
+let airData = {
+  labels: [],
+  pm25: [],
+  pm10: [],
+  co2: []
+};
+
+/* ================= CHART ================= */
+const airChart = new Chart(document.getElementById('airChart'), {
+  type: 'line',
+  data: {
+    labels: airData.labels,
+    datasets: [
+      { label: 'PM2.5 (µg/m³)', data: airData.pm25, borderColor:'#e74c3c', tension:0.3 },
+      { label: 'PM10 (µg/m³)', data: airData.pm10, borderColor:'#f39c12', tension:0.3 },
+      { label: 'CO₂ (ppm)', data: airData.co2, borderColor:'#27ae60', tension:0.3 }
+    ]
+  },
+  options: {
+    responsive:true,
+    maintainAspectRatio:false,
+    animation:false,
+    scales:{ x:{ title:{ display:true, text:'Time' }}}
+  }
+});
+
+/* ================= LIVE FIREBASE DATA ================= */
+db.ref("esp32").on("value", snapshot => {
+  const data = snapshot.val();
+  if (!data) return;
+
+  const time = new Date().toLocaleTimeString();
+
+  document.getElementById('readings').innerHTML = `
+    <strong>Last Update:</strong> ${time}<br>
+    🌡 Temp: <b>${data.temp ?? '--'}°C</b> |
+    💧 Humidity: <b>${data.hum ?? '--'}%</b><br>
+    🌫 PM2.5: <b>${data.pm25 ?? '--'} µg/m³</b> |
+    🌫 PM10: <b>${data.pm10 ?? '--'} µg/m³</b><br>
+    🟢 CO₂: <b>${data.co2 ?? '--'} ppm</b> |
+    📊 AQI: <b>${data.aqi ?? '--'}</b>
+  `;
+
+  if (data.pm25 || data.pm10 || data.co2) {
+    airData.labels.push(time);
+    airData.pm25.push(data.pm25 || 0);
+    airData.pm10.push(data.pm10 || 0);
+    airData.co2.push(data.co2 || 0);
+
+    if (airData.labels.length > 20) {
+      airData.labels.shift();
+      airData.pm25.shift();
+      airData.pm10.shift();
+      airData.co2.shift();
+    }
+    airChart.update();
+  }
+});
+</script>
+
+<div class="card">
+<h3>City-wise AQI Comparison</h3>
+<table style="width:100%; border-collapse:collapse; text-align:center;">
+<tr>
+<th style="border:1px solid #ccc; padding:6px;">City</th>
+<th style="border:1px solid #ccc; padding:6px;">AQI</th>
+</tr>
+<tr><td>Mumbai</td><td>--</td></tr>
+<tr><td>Delhi</td><td>--</td></tr>
+<tr><td>Pune</td><td>--</td></tr>
+<tr><td>Bengaluru</td><td>--</td></tr>
+</table>
+</div>
+
+</body>
+</html>
